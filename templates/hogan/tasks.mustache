@@ -1,0 +1,9 @@
+<form action="/task/" method="post" id="task-form">
+    <input type="text" name="task[name]" placeholder="Task Name" id="task-name">
+    <input type="submit" value="Add">
+</form>
+<ul id="task-list">
+    {{#tasks}}
+        {{>task}}
+    {{/tasks}}
+</ul>

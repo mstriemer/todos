@@ -1,11 +1,19 @@
 import os
+import uuid
 
 import tornado.ioloop
 import tornado.web
 
+def make_uuid():
+    return str(uuid.uuid4())
+
 class Task(object):
     def __init__(self, name):
         self.name = name
+        self.uuid = make_uuid()
+
+    def to_json(self):
+        return {'name': self.name, 'uuid': self.uuid}
 
 class TaskList(object):
     def __init__(self):
@@ -18,6 +26,9 @@ class TaskList(object):
         task = Task(name)
         self.tasks.append(task)
         return task
+
+    def to_json(self):
+        return [task.to_json() for task in self]
 
 tasks = TaskList()
 tasks.create_task('Learn Tornado')
@@ -46,7 +57,7 @@ class TaskHandler(tornado.web.RequestHandler):
     def get(self):
         accepts = self.get_argument('format', 'html')
         if accepts == 'json':
-            self.write({'tasks': [{'name': t.name} for t in tasks]})
+            self.write({'tasks': tasks.to_json()})
         else:
             self.write(base_html)
 

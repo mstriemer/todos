@@ -16,7 +16,23 @@
 
     var renderHtml = function() {
         $('#tasks').html(templates.tasks.render({tasks: tasks}, templates));
-        $('#task-form').on('submit', function() {
+        $('[data-remote="true"]').click(function(e) {
+            $this = $(this);
+            var url = $this.attr('href'),
+                method = $this.data('method');
+            if (typeof(method) == 'undefined') method = 'get';
+            $.ajax({
+                url: url,
+                type: method,
+                success: function(data, textStatus, jqXHR) {
+                    console.log(data);
+                    $this.parent().remove();
+                },
+                error: handleError,
+            })
+            e.preventDefault();
+        });
+        $('#task-form').submit(function() {
             $.ajax({
                 url: '/task/?format=json',
                 type: 'post',

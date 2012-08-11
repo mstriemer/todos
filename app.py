@@ -27,6 +27,13 @@ class TaskList(object):
         self.tasks.append(task)
         return task
 
+    def delete_task(self, uuid):
+        for task in self:
+            if task.uuid == uuid:
+                self.tasks.remove(task)
+                return task
+        return None
+
     def to_json(self):
         return [task.to_json() for task in self]
 
@@ -38,8 +45,8 @@ base_html = '''<!DOCTYPE html>
 <html>
     <head>
         <title>Tasks</title>
-        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
-        <script src="http://twitter.github.com/hogan.js/builds/2.0.0/hogan-2.0.0.js"></script>
+        <script type="text/javascript" src="/static/js/jquery-1.6.4.js"></script>
+        <script src="/static/js/hogan.js"></script>
         <script type="text/javascript" src="/static/js/templates.js"></script>
         <script type="text/javascript" src="/static/js/app.js"></script>
     </head>
@@ -66,7 +73,7 @@ class TaskHandler(tornado.web.RequestHandler):
             task_name = self.get_argument('name', None)
             if task_name:
                 task = tasks.create_task(task_name)
-                self.write({'task': {'name': task.name}})
+                self.write({'task': task.to_json()})
             else:
                 self.write({})
         else:
@@ -74,6 +81,17 @@ class TaskHandler(tornado.web.RequestHandler):
             if task_name:
                 task = tasks.create_task(task_name)
             self.redirect('/task/')
+
+    def delete(self):
+        if self.get_argument('format', 'html') == 'json':
+            uuid = self.get_argument('uuid')
+            task = tasks.delete_task(uuid)
+            if task is None:
+                self.write({
+                    'status': 'error',
+                    'message': 'no task with uuid {}'.format(uuid)})
+            else:
+                self.write({'status': 'destroyed'})
 
 static_path = os.path.join(os.path.dirname(__file__), 'static')
 

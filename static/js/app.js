@@ -16,22 +16,25 @@
 
     var renderHtml = function() {
         $('#tasks').html(templates.tasks.render({tasks: tasks}, templates));
-        $('[data-remote="true"]').click(function(e) {
-            $this = $(this);
-            var url = $this.attr('href'),
-                method = $this.data('method');
-            if (typeof(method) == 'undefined') method = 'get';
-            $.ajax({
-                url: url,
-                type: method,
-                success: function(data, textStatus, jqXHR) {
-                    console.log(data);
-                    $this.parent().remove();
-                },
-                error: handleError,
-            })
-            e.preventDefault();
-        });
+        var initDestroy;
+        (initDestroy = function() {
+            $('[data-remote="true"]').click(function(e) {
+                $this = $(this);
+                var url = $this.attr('href'),
+                    method = $this.data('method');
+                if (typeof(method) == 'undefined') method = 'get';
+                $.ajax({
+                    url: url,
+                    type: method,
+                    success: function(data, textStatus, jqXHR) {
+                        console.log(data);
+                        $this.parent().remove();
+                    },
+                    error: handleError,
+                })
+                e.preventDefault();
+            });
+        })();
         $('#task-form').submit(function() {
             $.ajax({
                 url: '/task/?format=json',
@@ -42,6 +45,7 @@
                     if (data.task) {
                         $('#task-list').append(templates.task.render(data.task));
                         $('#task-name').val('');
+                        initDestroy();
                     }
                 },
                 error: handleError,

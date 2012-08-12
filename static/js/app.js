@@ -11,6 +11,17 @@
         renderHtml(data.tasks);
     };
 
+    var handleUpdates = function() {
+        var ws = new WebSocket("ws://localhost:8000/updates/");
+        ws.onmessage = function(e) {
+            var data = JSON.parse(e.data)
+              , uuid = data.task.uuid;
+            console.log(data.task);
+            console.log('#task-' + uuid);
+            $('#task-' + uuid).replaceWith(templates.task.render(data.task));
+        };
+    };
+
     var renderHtml = function(tasks) {
         $('#content').html(templates.tasks.render({tasks: tasks}, templates));
         var initDestroy, initEdit;
@@ -88,5 +99,6 @@
     jQuery(function($) {
         renderHtml([]);
         loadTasks();
+        handleUpdates();
     });
 })();

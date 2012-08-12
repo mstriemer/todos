@@ -3,6 +3,7 @@ import uuid
 
 import tornado.ioloop
 import tornado.web
+import tornado.websocket
 
 def make_uuid():
     return str(uuid.uuid4())
@@ -95,6 +96,8 @@ class TaskHandler(tornado.web.RequestHandler):
             task = tasks.find(uuid)
             task.name = self.get_argument('name')
             self.write({'task': task.to_json()})
+            for handler in connected:
+                handler.task_updated(task)
 
     def delete(self, uuid):
         if self.get_argument('format', '') == 'json':
@@ -106,11 +109,29 @@ class TaskHandler(tornado.web.RequestHandler):
             else:
                 self.write({'status': 'destroyed'})
 
+connected = []
+
+class TasksWebsocketHandler(tornado.websocket.WebSocketHandler):
+    def open(self):
+        connected.append(self)
+        print('updates subscribed')
+
+    def on_close(self):
+        connected.remove(self)
+        print('updates unsubscribed')
+
+    def on_message(self, message):
+        pass  # We just use this to push updates to clients
+
+    def task_updated(self, task):
+        self.write_message({'task': task.to_json()})
+
 static_path = os.path.join(os.path.dirname(__file__), 'static')
 
 application = tornado.web.Application([
         (r'/task/', TasksHandler),
         (r'/task/(.+)/', TaskHandler),
+        (r'/updates/', TasksWebsocketHandler),
         (r'/static/(.+)', tornado.web.StaticFileHandler, dict(path=static_path)),
     ],
     debug=True)

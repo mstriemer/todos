@@ -34,6 +34,12 @@ class TaskList(object):
                 return task
         return None
 
+    def find(self, uuid):
+        for task in self:
+            if task.uuid == uuid:
+                return task
+        raise IndexError("no task with uuid {}".format(uuid))
+
     def to_json(self):
         return [task.to_json() for task in self]
 
@@ -61,7 +67,7 @@ base_html = '''<!DOCTYPE html>
 </html>
 '''
 
-class TaskHandler(tornado.web.RequestHandler):
+class TasksHandler(tornado.web.RequestHandler):
     def get(self):
         accepts = self.get_argument('format', 'html')
         if accepts == 'json':
@@ -70,7 +76,7 @@ class TaskHandler(tornado.web.RequestHandler):
             self.write(base_html)
 
     def post(self):
-        if self.get_argument('format', 'html') == 'json':
+        if self.get_argument('format', '') == 'json':
             task_name = self.get_argument('name', None)
             if task_name:
                 task = tasks.create_task(task_name)
@@ -83,9 +89,15 @@ class TaskHandler(tornado.web.RequestHandler):
                 task = tasks.create_task(task_name)
             self.redirect('/task/')
 
-    def delete(self):
-        if self.get_argument('format', 'html') == 'json':
-            uuid = self.get_argument('uuid')
+class TaskHandler(tornado.web.RequestHandler):
+    def put(self, uuid):
+        if self.get_argument('format', '') == 'json':
+            task = tasks.find(uuid)
+            task.name = self.get_argument('name')
+            self.write({'task': task.to_json()})
+
+    def delete(self, uuid):
+        if self.get_argument('format', '') == 'json':
             task = tasks.delete_task(uuid)
             if task is None:
                 self.write({
@@ -97,7 +109,8 @@ class TaskHandler(tornado.web.RequestHandler):
 static_path = os.path.join(os.path.dirname(__file__), 'static')
 
 application = tornado.web.Application([
-        (r'/task/', TaskHandler),
+        (r'/task/', TasksHandler),
+        (r'/task/(.+)/', TaskHandler),
         (r'/static/(.+)', tornado.web.StaticFileHandler, dict(path=static_path)),
     ],
     debug=True)

@@ -1,4 +1,9 @@
 <div class="task row">
-    {{name}}
-    <a href="/task/?format=json&uuid={{uuid}}" rel="destroy" data-method="delete" data-remote="true">&times;</a>
+    <form method="put" class="task-form form-inline" action="/task/{{uuid}}/?format=json">
+        <input type="text" class="task-name span6" value="{{name}}">
+    </form>
+    <div class="show">
+        {{name}}
+        <a href="/task/{{uuid}}/?format=json" rel="destroy" data-method="delete" data-remote="true">&times;</a>
+    </div>
 </div>

@@ -16,7 +16,7 @@
 
     var renderHtml = function() {
         $('#content').html(templates.tasks.render({tasks: tasks}, templates));
-        var initDestroy;
+        var initDestroy, initEdit;
         (initDestroy = function() {
             $('[data-remote="true"]').click(function(e) {
                 $this = $(this);
@@ -28,10 +28,34 @@
                     type: method,
                     success: function(data, textStatus, jqXHR) {
                         console.log(data);
-                        $this.parent().remove();
+                        $this.parents('.task').remove();
                     },
                     error: handleError,
-                })
+                });
+                e.preventDefault();
+                return false;
+            });
+        })();
+        (initEdit = function() {
+            $('.task').on('click', function() {
+                $(this).addClass('edit');
+                $(this).find('.task-form .task-name').focus();
+            });
+            $('.task .task-form').on('submit', function(e) {
+                var $form = $(this);
+                $form.parent().removeClass('edit');
+                $.ajax({
+                    url: $form.attr('action'),
+                    type: $form.attr('method'),
+                    data: {name: $form.find('.task-name').val()},
+                    error: handleError,
+                    success: function(data, textStatus, jqXHR) {
+                        console.log(data);
+                        $form.parent().replaceWith(templates.task.render(data.task));
+                        initDestroy();
+                        initEdit();
+                    }
+                });
                 e.preventDefault();
             });
         })();
@@ -46,6 +70,7 @@
                         $('#task-list').append(templates.task.render(data.task));
                         $('#task-name').val('');
                         initDestroy();
+                        initEdit();
                     }
                 },
                 error: handleError,

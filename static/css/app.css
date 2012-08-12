@@ -16,11 +16,27 @@
     color: #333;
     text-decoration: none;
 }
+.task .task-form {
+    display: none;
+}
+.task.edit .show {
+    display:none;
+}
+.task.edit .task-form {
+    display: inline-block;
+}
 #task-form {
     background-color: #fff;
+}
+.task-form {
+    padding: 0;
+    margin: 0;
+}
+.task .show {
+    padding: 5px;
 }
 #task-name {
     margin-left: -10px;
     padding-left: 6px;
-    padding-right: 24px;
+    padding-right: 22px;
 }

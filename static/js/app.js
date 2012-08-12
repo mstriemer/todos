@@ -12,7 +12,7 @@
     };
 
     var handleUpdates = function() {
-        var ws = new WebSocket("ws://localhost:8000/updates/");
+        var ws = new WebSocket("ws://" + window.location.host + "/updates/");
         ws.onmessage = function(e) {
             var data = JSON.parse(e.data)
               , uuid = data.task.uuid;

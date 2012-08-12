@@ -1,6 +1,4 @@
 (function() {
-    var tasks = [];
-
     var handleError = function(jqHXR, textStatus, errorThrown) {
         alert('ajax error');
         console.log(jqXHR);
@@ -10,11 +8,10 @@
 
     var handleSuccess = function(data, textStatus, jqXHR) {
         console.log(data);
-        tasks = data.tasks;
-        renderHtml();
+        renderHtml(data.tasks);
     };
 
-    var renderHtml = function() {
+    var renderHtml = function(tasks) {
         $('#content').html(templates.tasks.render({tasks: tasks}, templates));
         var initDestroy, initEdit;
         (initDestroy = function() {
@@ -89,7 +86,7 @@
     };
 
     jQuery(function($) {
-        renderHtml();
+        renderHtml([]);
         loadTasks();
     });
 })();

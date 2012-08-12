@@ -1,113 +1,80 @@
 (function() {
-    var initDestroy, initEdit;
-    (initDestroy = function() {
-        $('[data-remote="true"]').click(function(e) {
-            $this = $(this);
-            var url = $this.attr('href'),
-                method = $this.data('method');
-            if (typeof(method) == 'undefined') method = 'get';
-            $.ajax({
-                url: url,
-                type: method,
-                success: function(data, textStatus, jqXHR) {
-                    console.log(data);
-                    $this.parents('.task').remove();
-                },
-                error: handleError,
-            });
+    var initDestroy
+      , initEdit
+      , ws = new WebSocket("ws://" + window.location.host + "/task/");
+
+    (initDestroy = function(sel) {
+        sel = typeof(sel) != 'undefined' ? sel + ' ' : '';
+        sel +=  '[data-remote="true"]';
+        $(sel).on('click', function(e) {
+            var $this = $(this)
+              , type = $this.data('method')
+              , json;
+            if (typeof(type) == 'undefined') type = 'get';
+            json = JSON.stringify({type: type, task: {uuid: $this.data('uuid')}});
+            ws.send(json);
             e.preventDefault();
             return false;
         });
     })();
-    (initEdit = function() {
-        $('.task').on('click', function() {
+
+    (initEdit = function(sel) {
+        if (typeof(sel) == 'undefined') sel = '.task';
+
+        $(sel).on('click', function() {
             $(this).addClass('edit');
             $(this).find('.task-form .task-name').focus();
         });
-        $('.task .task-form').on('submit', function(e) {
+        $(sel + ' .task-form').on('submit', function(e) {
             var $form = $(this);
+            ws.send(JSON.stringify({type: 'put', task: {uuid: $form.data('uuid'), name: $form.find('.task-name').val()}}));
             $form.parent().removeClass('edit');
-            $.ajax({
-                url: $form.attr('action'),
-                type: $form.attr('method'),
-                data: {name: $form.find('.task-name').val()},
-                error: handleError,
-                success: function(data, textStatus, jqXHR) {
-                    console.log(data);
-                    $form.parent().replaceWith(templates.task.render(data.task));
-                }
-            });
             e.preventDefault();
         });
     })();
 
-    var handleError = function(jqHXR, textStatus, errorThrown) {
-        alert('ajax error');
-        console.log(jqXHR);
-        console.log(textStatus);
-        console.log(errorThrown);
-    };
-
-    var handleSuccess = function(data, textStatus, jqXHR) {
-        console.log(data);
-        renderHtml(data.tasks);
-    };
-
-    var handleUpdates = function() {
-        var ws = new WebSocket("ws://" + window.location.host + "/updates/");
-        ws.onmessage = function(e) {
-            var data = JSON.parse(e.data)
-              , uuid = data.task.uuid;
-            if (data.status == 'updated') {
-                console.log(uuid + ' updated');
-                $('#task-' + uuid).replaceWith(templates.task.render(data.task));
-                initDestroy();
-                initEdit();
-            } else if (data.status == 'created') {
-                console.log(uuid + ' created');
-                console.log(data);
-                $('#task-list').append(templates.task.render(data.task));
-                initDestroy();
-                initEdit();
-            } else if (data.status == 'deleted') {
-                console.log(uuid + ' deleted');
-                $('#task-' + uuid).remove();
-            } else {
-                console.log(data);
-                console.log(data.status + ' unhandled');
-            }
-        };
+    var setHooks = function(sel) {
+        initDestroy(sel);
+        initEdit(sel);
     };
 
     var renderHtml = function(tasks) {
         $('#content').html(templates.tasks.render({tasks: tasks}, templates));
-        $('#task-form').submit(function() {
-            $.ajax({
-                url: '/task/?format=json',
-                type: 'post',
-                data: {name: $('#task-name').val()},
-                success: function(data, textStatus, jqXHR) {
-                    console.log(data);
-                    $('#task-name').val('');
-                },
-                error: handleError,
-            });
-            return false;
+        $('#task-form').on('submit', function(e) {
+            ws.send(JSON.stringify({type: 'post', task: {name: $('#task-name').val()}}));
+            e.preventDefault();
         });
     };
 
+    var handleUpdates = function() {
+        ws.onopen = loadTasks;
+        ws.onmessage = function(e) {
+            var data = JSON.parse(e.data), uuid;
+            if (data.status == 'updated') {
+                uuid = data.task.uuid;
+                $('#task-' + uuid).replaceWith(templates.task.render(data.task));
+                setHooks('#task-' + uuid);
+            } else if (data.status == 'created') {
+                uuid = data.task.uuid;
+                $('#task-list').append(templates.task.render(data.task));
+                $('#task-name').val('');
+                setHooks('#task-' + uuid);
+            } else if (data.status == 'deleted') {
+                uuid = data.task.uuid;
+                $('#task-' + uuid).remove();
+            } else if (typeof(data.tasks) != 'undefined') {
+                renderHtml(data.tasks);
+                setHooks();
+            }
+        };
+    };
+
     var loadTasks = function() {
-        $.ajax({
-            url: '/task/?format=json',
-            type: 'get',
-            success: handleSuccess,
-            error: handleError,
-        });
+        ws.send(JSON.stringify({type: 'get'}));
     };
 
     jQuery(function($) {
         renderHtml([]);
-        loadTasks();
         handleUpdates();
     });
 })();

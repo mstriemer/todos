@@ -1,6 +1,8 @@
 import os
 import uuid
 
+import simplejson as json
+
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
@@ -29,11 +31,9 @@ class TaskList(object):
         return task
 
     def delete_task(self, uuid):
-        for task in self:
-            if task.uuid == uuid:
-                self.tasks.remove(task)
-                return task
-        return None
+        task = self.find(uuid)
+        self.tasks.remove(task)
+        return task
 
     def find(self, uuid):
         for task in self:
@@ -70,49 +70,8 @@ base_html = '''<!DOCTYPE html>
 </html>
 '''
 
-class TasksHandler(tornado.web.RequestHandler):
-    def get(self):
-        accepts = self.get_argument('format', 'html')
-        if accepts == 'json':
-            self.write({'tasks': tasks.to_json()})
-        else:
-            self.write(base_html)
-
-    def post(self):
-        if self.get_argument('format', '') == 'json':
-            task_name = self.get_argument('name', None)
-            if task_name:
-                task = tasks.create_task(task_name)
-                TasksWebsocketHandler.send_task_update(task, 'created')
-            else:
-                self.write({})
-        else:
-            task_name = self.get_argument('task[name]', None)
-            if task_name:
-                task = tasks.create_task(task_name)
-            self.redirect('/task/')
-
-class TaskHandler(tornado.web.RequestHandler):
-    def put(self, uuid):
-        if self.get_argument('format', '') == 'json':
-            task = tasks.find(uuid)
-            task.name = self.get_argument('name')
-            self.write({'task': task.to_json()})
-            TasksWebsocketHandler.send_task_update(task, 'updated')
-
-    def delete(self, uuid):
-        if self.get_argument('format', '') == 'json':
-            task = tasks.delete_task(uuid)
-            if task is None:
-                self.write({
-                    'status': 'error',
-                    'message': 'no task with uuid {}'.format(uuid)})
-            else:
-                TasksWebsocketHandler.send_task_update(task, 'deleted')
-
 class TasksWebsocketHandler(tornado.websocket.WebSocketHandler):
-    @classmethod
-    def send_task_update(cls, task, status):
+    def send_task_updates(self, task, status):
         for handler in connected:
             handler.task_updated(task, status)
 
@@ -125,17 +84,39 @@ class TasksWebsocketHandler(tornado.websocket.WebSocketHandler):
         print('updates unsubscribed')
 
     def on_message(self, message):
-        pass  # We just use this to push updates to clients
+        print('handling "{}"'.format(message))
+        data = json.loads(message)
+        method = data['type']
+        if method == 'get':
+            self.write_message({'tasks': tasks.to_json()})
+        elif method == 'post':
+            task_name = data['task']['name']
+            task = tasks.create_task(task_name)
+            self.send_task_updates(task, 'created')
+        elif method == 'put':
+            uuid = data['task']['uuid']
+            task = tasks.find(uuid)
+            task.name = data['task']['name']
+            self.send_task_updates(task, 'updated')
+        elif method == 'delete':
+            uuid = data['task']['uuid']
+            task = tasks.delete_task(uuid)
+            self.send_task_updates(task, 'deleted')
+        else:
+            self.write_message({'error': 'unspecified method'})
 
     def task_updated(self, task, status):
         self.write_message({'task': task.to_json(), 'status': status})
 
+class AppHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write(base_html)
+
 static_path = os.path.join(os.path.dirname(__file__), 'static')
 
 application = tornado.web.Application([
-        (r'/task/', TasksHandler),
-        (r'/task/(.+)/', TaskHandler),
-        (r'/updates/', TasksWebsocketHandler),
+        (r'/', AppHandler),
+        (r'/task/', TasksWebsocketHandler),
         (r'/static/(.+)', tornado.web.StaticFileHandler, dict(path=static_path)),
     ],
     debug=True)

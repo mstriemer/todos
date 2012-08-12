@@ -45,15 +45,16 @@ base_html = '''<!DOCTYPE html>
 <html>
     <head>
         <title>Tasks</title>
-        <script type="text/javascript" src="/static/js/jquery-1.6.4.js"></script>
-        <script src="/static/js/hogan.js"></script>
+        <script type="text/javascript" src="/static/js/jquery-1.8.0.min.js"></script>
+        <script type="text/javascript" src="/static/js/hogan-2.0.0.js"></script>
         <script type="text/javascript" src="/static/js/templates.js"></script>
         <script type="text/javascript" src="/static/js/app.js"></script>
+        <link rel="stylesheet" type="text/css" href="/static/css/bootstrap.css">
+        <link rel="stylesheet" type="text/css" href="/static/css/app.css">
     </head>
     <body>
-        <div id="content">
-            <h1>Tasks</h1>
-            <div id="tasks">
+        <div class="container">
+            <div id="content">
             </div>
         </div>
     </body>

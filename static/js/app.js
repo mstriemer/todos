@@ -15,7 +15,7 @@
     };
 
     var renderHtml = function() {
-        $('#tasks').html(templates.tasks.render({tasks: tasks}, templates));
+        $('#content').html(templates.tasks.render({tasks: tasks}, templates));
         var initDestroy;
         (initDestroy = function() {
             $('[data-remote="true"]').click(function(e) {

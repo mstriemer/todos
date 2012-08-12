@@ -1,0 +1,26 @@
+.task, #task-form {
+    background-color: #ccc;
+    margin-bottom: 5px;
+    padding: 10px;
+    border-radius: 5px;
+}
+.task:hover {
+    background-color: #ddd;
+}
+.task a[rel="destroy"] {
+    float: right;
+    font-size: 18px;
+    color: #eee;
+}
+.task a[rel="destroy"]:hover {
+    color: #333;
+    text-decoration: none;
+}
+#task-form {
+    background-color: #fff;
+}
+#task-name {
+    margin-left: -10px;
+    padding-left: 6px;
+    padding-right: 24px;
+}

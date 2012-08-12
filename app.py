@@ -44,6 +44,8 @@ class TaskList(object):
     def to_json(self):
         return [task.to_json() for task in self]
 
+connected = []
+
 tasks = TaskList()
 tasks.create_task('Learn Tornado')
 tasks.create_task('Do something cool')
@@ -81,7 +83,7 @@ class TasksHandler(tornado.web.RequestHandler):
             task_name = self.get_argument('name', None)
             if task_name:
                 task = tasks.create_task(task_name)
-                self.write({'task': task.to_json()})
+                TasksWebsocketHandler.send_task_update(task, 'created')
             else:
                 self.write({})
         else:
@@ -96,8 +98,7 @@ class TaskHandler(tornado.web.RequestHandler):
             task = tasks.find(uuid)
             task.name = self.get_argument('name')
             self.write({'task': task.to_json()})
-            for handler in connected:
-                handler.task_updated(task)
+            TasksWebsocketHandler.send_task_update(task, 'updated')
 
     def delete(self, uuid):
         if self.get_argument('format', '') == 'json':
@@ -107,11 +108,14 @@ class TaskHandler(tornado.web.RequestHandler):
                     'status': 'error',
                     'message': 'no task with uuid {}'.format(uuid)})
             else:
-                self.write({'status': 'destroyed'})
-
-connected = []
+                TasksWebsocketHandler.send_task_update(task, 'deleted')
 
 class TasksWebsocketHandler(tornado.websocket.WebSocketHandler):
+    @classmethod
+    def send_task_update(cls, task, status):
+        for handler in connected:
+            handler.task_updated(task, status)
+
     def open(self):
         connected.append(self)
         print('updates subscribed')
@@ -123,8 +127,8 @@ class TasksWebsocketHandler(tornado.websocket.WebSocketHandler):
     def on_message(self, message):
         pass  # We just use this to push updates to clients
 
-    def task_updated(self, task):
-        self.write_message({'task': task.to_json()})
+    def task_updated(self, task, status):
+        self.write_message({'task': task.to_json(), 'status': status})
 
 static_path = os.path.join(os.path.dirname(__file__), 'static')
 

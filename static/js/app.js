@@ -1,4 +1,46 @@
 (function() {
+    var initDestroy, initEdit;
+    (initDestroy = function() {
+        $('[data-remote="true"]').click(function(e) {
+            $this = $(this);
+            var url = $this.attr('href'),
+                method = $this.data('method');
+            if (typeof(method) == 'undefined') method = 'get';
+            $.ajax({
+                url: url,
+                type: method,
+                success: function(data, textStatus, jqXHR) {
+                    console.log(data);
+                    $this.parents('.task').remove();
+                },
+                error: handleError,
+            });
+            e.preventDefault();
+            return false;
+        });
+    })();
+    (initEdit = function() {
+        $('.task').on('click', function() {
+            $(this).addClass('edit');
+            $(this).find('.task-form .task-name').focus();
+        });
+        $('.task .task-form').on('submit', function(e) {
+            var $form = $(this);
+            $form.parent().removeClass('edit');
+            $.ajax({
+                url: $form.attr('action'),
+                type: $form.attr('method'),
+                data: {name: $form.find('.task-name').val()},
+                error: handleError,
+                success: function(data, textStatus, jqXHR) {
+                    console.log(data);
+                    $form.parent().replaceWith(templates.task.render(data.task));
+                }
+            });
+            e.preventDefault();
+        });
+    })();
+
     var handleError = function(jqHXR, textStatus, errorThrown) {
         alert('ajax error');
         console.log(jqXHR);
@@ -16,57 +58,29 @@
         ws.onmessage = function(e) {
             var data = JSON.parse(e.data)
               , uuid = data.task.uuid;
-            console.log(data.task);
-            console.log('#task-' + uuid);
-            $('#task-' + uuid).replaceWith(templates.task.render(data.task));
+            if (data.status == 'updated') {
+                console.log(uuid + ' updated');
+                $('#task-' + uuid).replaceWith(templates.task.render(data.task));
+                initDestroy();
+                initEdit();
+            } else if (data.status == 'created') {
+                console.log(uuid + ' created');
+                console.log(data);
+                $('#task-list').append(templates.task.render(data.task));
+                initDestroy();
+                initEdit();
+            } else if (data.status == 'deleted') {
+                console.log(uuid + ' deleted');
+                $('#task-' + uuid).remove();
+            } else {
+                console.log(data);
+                console.log(data.status + ' unhandled');
+            }
         };
     };
 
     var renderHtml = function(tasks) {
         $('#content').html(templates.tasks.render({tasks: tasks}, templates));
-        var initDestroy, initEdit;
-        (initDestroy = function() {
-            $('[data-remote="true"]').click(function(e) {
-                $this = $(this);
-                var url = $this.attr('href'),
-                    method = $this.data('method');
-                if (typeof(method) == 'undefined') method = 'get';
-                $.ajax({
-                    url: url,
-                    type: method,
-                    success: function(data, textStatus, jqXHR) {
-                        console.log(data);
-                        $this.parents('.task').remove();
-                    },
-                    error: handleError,
-                });
-                e.preventDefault();
-                return false;
-            });
-        })();
-        (initEdit = function() {
-            $('.task').on('click', function() {
-                $(this).addClass('edit');
-                $(this).find('.task-form .task-name').focus();
-            });
-            $('.task .task-form').on('submit', function(e) {
-                var $form = $(this);
-                $form.parent().removeClass('edit');
-                $.ajax({
-                    url: $form.attr('action'),
-                    type: $form.attr('method'),
-                    data: {name: $form.find('.task-name').val()},
-                    error: handleError,
-                    success: function(data, textStatus, jqXHR) {
-                        console.log(data);
-                        $form.parent().replaceWith(templates.task.render(data.task));
-                        initDestroy();
-                        initEdit();
-                    }
-                });
-                e.preventDefault();
-            });
-        })();
         $('#task-form').submit(function() {
             $.ajax({
                 url: '/task/?format=json',
@@ -74,12 +88,7 @@
                 data: {name: $('#task-name').val()},
                 success: function(data, textStatus, jqXHR) {
                     console.log(data);
-                    if (data.task) {
-                        $('#task-list').append(templates.task.render(data.task));
-                        $('#task-name').val('');
-                        initDestroy();
-                        initEdit();
-                    }
+                    $('#task-name').val('');
                 },
                 error: handleError,
             });
